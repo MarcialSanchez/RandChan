@@ -2,6 +2,8 @@ package me.blitzer.randchan.app;
 
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
+import android.support.v7.widget.LinearLayoutManager;
+import android.support.v7.widget.RecyclerView;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -9,16 +11,20 @@ import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.ArrayAdapter;
 
 import com.squareup.okhttp.OkHttpClient;
 import com.squareup.okhttp.logging.HttpLoggingInterceptor;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
+import butterknife.Bind;
+import butterknife.ButterKnife;
 import me.blitzer.randchan.app.rest.ChanApiEndPoints;
 import me.blitzer.randchan.app.rest.model.boards.BoardsJsonModel;
 import me.blitzer.randchan.app.rest.model.catalog.CatalogJsonModel;
+import me.blitzer.randchan.app.rest.model.thread.Post;
 import me.blitzer.randchan.app.rest.model.thread.ThreadJsonModel;
 import retrofit.Call;
 import retrofit.Callback;
@@ -32,7 +38,8 @@ import static com.squareup.okhttp.logging.HttpLoggingInterceptor.Level.BODY;
  */
 public class ChanThreadFragment extends Fragment {
 
-    ArrayAdapter<String> listAdapter;
+    @Bind(R.id.recyclerview_posts) RecyclerView recyclerView;
+    private ThreadAdapter adapter;
 
     public ChanThreadFragment() {
     }
@@ -51,7 +58,7 @@ public class ChanThreadFragment extends Fragment {
         // Handle item selection
         if (item.getItemId() == R.id.action_random_thread) {
             FetchTextThread task = new FetchTextThread();
-            ThreadJsonModel data = task.run();
+            task.run();
             return true;
         }
         return super.onOptionsItemSelected(item);
@@ -61,9 +68,34 @@ public class ChanThreadFragment extends Fragment {
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         View rootView = inflater.inflate(R.layout.fragment_main, container, false);
-
-
+        ButterKnife.bind(this, rootView);
         return rootView;
+    }
+
+    @Override public void onViewCreated(View view, Bundle savedInstanceState) {
+        super.onViewCreated(view, savedInstanceState);
+        init();
+    }
+
+    private void init() {
+        initUi();
+        //initPresenter();
+    }
+
+    private void initUi() {
+
+        String[] datos = {
+                "Get a Random Thread",
+                "Push button on top",
+        };
+        List<String> initText = new ArrayList<>(Arrays.asList(datos));
+        adapter = new ThreadAdapter(initText);
+        recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
+        recyclerView.setAdapter(adapter);
+    }
+
+    public interface ThreadFragmentCallback {
+        void onItemSelected(ThreadJsonModel forecast);
     }
 
     public class FetchTextThread{
@@ -101,7 +133,7 @@ public class ChanThreadFragment extends Fragment {
                                 @Override
                                 public void onResponse(Response<ThreadJsonModel> response, Retrofit retrofit) {
                                     setThreadData(response.body());
-                                    Log.e(LOG_TAG,"Posting DATA:");//todo continuar aqui
+                                    onPostExecute();
                                 }
 
                                 @Override
@@ -141,6 +173,12 @@ public class ChanThreadFragment extends Fragment {
         }
         private void setThreadData(ThreadJsonModel jsonThread){
             threadData = jsonThread;
+        }
+        private void onPostExecute(){
+            adapter.clean();
+            for(Post post : threadData.getPosts()){
+                adapter.add(post.getCom());
+            }
         }
     }
 
